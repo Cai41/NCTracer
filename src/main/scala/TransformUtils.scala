@@ -1,8 +1,9 @@
-import org.apache.spark.ml.linalg.{ Vector, Vectors }
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 
 object TransformUtils {
+
   case class TrainRecord(label: Double, features: Vector)
-  
+
   val (xx, yy, zz) = (21, 21, 7)
 
   // these functions are used for calculate the coordinates after rotation

@@ -1,21 +1,15 @@
-import org.apache.spark.ml.classification._
-import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.ml.feature.{ Normalizer, StandardScaler, VectorIndexer }
-import org.apache.spark.ml.linalg.{ Vector, Vectors }
-import org.apache.spark.ml.param.{ Param, ParamMap }
-import org.apache.spark.ml.tuning.{ ParamGridBuilder, TrainValidationSplit }
-import org.apache.spark.ml.feature.PCA
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.rand
-import org.apache.spark.sql.Dataset
-import org.apache.spark.ml.{ Estimator, Model, Pipeline }
-import org.apache.spark.ml.classification.{ GBTClassifier, MultilayerPerceptronClassifier }
+import TransformUtils.{mirror, rotate}
+import org.apache.spark.ml.classification.{GBTClassifier, MultilayerPerceptronClassifier, _}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.ml.linalg.{Vector, Vectors}
+import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.tuning.ParamGridBuilder
 import org.apache.spark.ml.util.MLWritable
-import TransformUtils.{ mirror, rotate }
-import org.apache.spark.SparkContext
+import org.apache.spark.ml.{Estimator, Model}
+import org.apache.spark.sql.{Dataset, SparkSession}
 
 object Training {
+
   case class TrainRecord(label: Double, features: Vector)
 
   // convert each input line to TrainRecord
@@ -35,10 +29,9 @@ object Training {
   // take a set of parameters, train model on each parameter
   // evaluate them on validatingData and return the one with highest accuracy
   def trainValidation(paramGrid: Array[ParamMap],
-    trainingData: Dataset[TrainRecord],
-    validatingData: Dataset[TrainRecord],
-    estimator: Estimator[_],
-    sc: SparkContext): (Model[_], Double) = {
+                      trainingData: Dataset[TrainRecord],
+                      validatingData: Dataset[TrainRecord],
+                      estimator: Estimator[_]): (Model[_], Double) = {
     // models of different parameters
     trainingData.persist()
     val models = paramGrid.map(paramMap =>
@@ -71,8 +64,8 @@ object Training {
 
     // evaluate on testing data and save the accuracy - only for debugging and local testing
     def evaluateTestData(model: Model[_],
-      modelName: String,
-      testingData: Dataset[TrainRecord]): Unit = {
+                         modelName: String,
+                         testingData: Dataset[TrainRecord]): Unit = {
       val predictionData = model.transform(testingData)
       val statistic = List(
         predictionData.filter(r => r.getAs[Double]("label") != r.getAs[Double]("prediction") && r.getAs[Double]("label") == 1.0).count,
@@ -91,7 +84,7 @@ object Training {
       .toDS().sample(false, TRAINING_RATIO).repartition(500)
 
     // Prepare validating data
-    val validatingData = sc.textFile(inputPath + "/validating")
+    val validatingData = sc.textFile(inputPath + "/validation")
       .map(toTrainRecord)
       .toDS()
 
@@ -189,9 +182,9 @@ object Training {
             .build()
           (rf, paramGrid, transformedTrainingData)
         }
-      val bestModel = trainValidation(metaData._2, metaData._3, validatingData, metaData._1, sc)
+      val bestModel = trainValidation(metaData._2, metaData._3, validatingData, metaData._1)
       // evaluateTestData(bestModel._1, modelName, testingData)
-      bestModel._1.asInstanceOf[MLWritable].save(outputPath + "/" + modelName)
+      bestModel._1.asInstanceOf[MLWritable].save(outputPath + "/models/" + modelName)
     })
   }
 }

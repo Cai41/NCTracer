@@ -116,7 +116,7 @@ object Training {
           val lr = new LogisticRegression()
           // parameter sets for logistic regression
           val paramGrid = new ParamGridBuilder()
-            .addGrid(lr.maxIter, Array(8, 16))
+            .addGrid(lr.maxIter, Array(8))
             .addGrid(lr.regParam, Array(0.1))
             .addGrid(lr.threshold, Array(0.18))
             .build()
@@ -177,8 +177,8 @@ object Training {
           val paramGrid = new ParamGridBuilder()
             .addGrid(rf.maxBins, Array(32))
             .addGrid(rf.numTrees, Array(20))
-            .addGrid(rf.maxDepth, Array(10))
-            .addGrid(rf.thresholds, Array(Array(0.4, 0.3), Array(0.5, 0.5)))
+            .addGrid(rf.maxDepth, Array(14))
+            .addGrid(rf.thresholds, Array(Array(0.5, 0.5)))
             .build()
           (rf, paramGrid, transformedTrainingData)
         }
